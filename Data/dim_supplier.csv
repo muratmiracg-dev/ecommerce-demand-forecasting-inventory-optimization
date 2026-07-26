@@ -1,0 +1,9 @@
+SupplierID,SupplierName,Country,Region,StandardLeadTimeDays,OnTimeDeliveryRate,QualityAcceptanceRate,OrderCostTRY,PaymentTermsDays
+SUP-001,Anatolia Textiles,Türkiye,Aegean,10,0.953,0.9837,1398,45
+SUP-002,Marmara Apparel,Türkiye,Aegean,18,0.8945,0.9884,1679,45
+SUP-003,Aegean Atelier,Türkiye,Marmara,14,0.9277,0.989,2940,45
+SUP-004,Bosporus Accessories,Türkiye,Aegean,7,0.8604,0.9744,2856,45
+SUP-005,Central Knitworks,Türkiye,Istanbul,35,0.8738,0.9854,1313,30
+SUP-006,Thrace Manufacturing,Türkiye,Marmara,21,0.9307,0.9894,2527,15
+SUP-007,Istanbul Leather,Türkiye,Istanbul,28,0.8721,0.9859,1861,60
+SUP-008,Mediterranean Fashion Supply,Türkiye,Istanbul,7,0.9363,0.9887,2935,15

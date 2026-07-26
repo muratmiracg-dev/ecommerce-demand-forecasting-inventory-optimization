@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "E-Commerce Demand & Inventory Analytics"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "60779211-7511-52be-87a4-b2c06727525a"
+  }
+}

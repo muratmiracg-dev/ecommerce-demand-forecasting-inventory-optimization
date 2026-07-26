@@ -1,0 +1,12 @@
+[project]
+name = "ecommerce-demand-inventory-optimization"
+version = "1.0.0"
+description = "Demand forecasting and inventory optimization portfolio platform for a synthetic fashion e-commerce business."
+requires-python = ">=3.11"
+authors = [{ name = "Murat Miraç Gedik" }]
+license = { text = "MIT" }
+
+[tool.pytest.ini_options]
+testpaths = ["Python/tests"]
+pythonpath = ["Python/src"]
+

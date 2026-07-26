@@ -1,0 +1,15 @@
+{
+  "project": "Ecommerce_Demand_Inventory_Analytics",
+  "pages": 10,
+  "visuals": 81,
+  "tables": [
+    "Demand Stages",
+    "category_performance",
+    "dim_calendar",
+    "monthly_performance",
+    "sku_performance"
+  ],
+  "relationships": 3,
+  "valid": true,
+  "errors": []
+}

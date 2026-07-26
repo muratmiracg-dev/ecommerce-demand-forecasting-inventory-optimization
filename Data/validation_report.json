@@ -1,0 +1,66 @@
+{
+  "project": "E-Commerce Demand Forecasting & Inventory Optimization Platform",
+  "all_passed": true,
+  "checks": [
+    {
+      "check": "60 product SKUs",
+      "passed": true,
+      "detail": "60 SKUs"
+    },
+    {
+      "check": "Product supplier keys",
+      "passed": true,
+      "detail": "All product supplier IDs resolve"
+    },
+    {
+      "check": "Sales product keys",
+      "passed": true,
+      "detail": "All sales SKUs resolve"
+    },
+    {
+      "check": "Non-negative sales measures",
+      "passed": true,
+      "detail": "No negative unit or value measures"
+    },
+    {
+      "check": "Demand balance",
+      "passed": true,
+      "detail": "Estimated demand approximately equals sold plus lost sales"
+    },
+    {
+      "check": "Historical coverage",
+      "passed": true,
+      "detail": "2023-01-02 to 2025-12-29"
+    },
+    {
+      "check": "Forecast coverage",
+      "passed": true,
+      "detail": "52 weeks x 60 SKUs"
+    },
+    {
+      "check": "Forecast completeness",
+      "passed": true,
+      "detail": "3,120 complete rows"
+    },
+    {
+      "check": "One champion per SKU",
+      "passed": true,
+      "detail": "Exactly one selected model per SKU"
+    },
+    {
+      "check": "Finite model metrics",
+      "passed": true,
+      "detail": "All model metrics are finite"
+    },
+    {
+      "check": "Case-pack rounding",
+      "passed": true,
+      "detail": "Every recommendation is a multiple of the product case pack"
+    },
+    {
+      "check": "Inventory non-negative",
+      "passed": true,
+      "detail": "No negative ending stock, on-order stock, or inventory value"
+    }
+  ]
+}
