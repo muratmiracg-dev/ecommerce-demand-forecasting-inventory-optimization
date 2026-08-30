@@ -1,5 +1,5 @@
 numpy>=2.0
-pandas>=2.2
+pandas>=3.0.5
 scikit-learn>=1.6
 scipy>=1.14
 matplotlib>=3.9
