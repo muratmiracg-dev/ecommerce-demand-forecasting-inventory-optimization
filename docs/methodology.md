@@ -53,6 +53,11 @@ holdout set. Every candidate is evaluated per SKU with:
 - **WAPE:** total absolute error divided by total actual demand
 - **Bias:** signed error relative to actual demand
 
+WAPE and bias use a one-unit denominator floor when holdout actual demand totals zero. This
+keeps a genuinely zero forecast at zero error while penalizing false-positive demand instead
+of incorrectly treating it as perfect. Metric inputs must also be aligned, finite, and
+non-negative before model selection.
+
 The candidate with the lowest SKU-level WAPE becomes the champion. The selected
 model is then refitted using all historical observations and used to produce the
 52-week forecast.
