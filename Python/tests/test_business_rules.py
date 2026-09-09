@@ -1,8 +1,10 @@
 import unittest
 
+import numpy as np
 import pandas as pd
 
 from ecom_opt.config import DATA_DIR
+from ecom_opt.forecasting import _bias, _wape
 
 
 class BusinessRuleTests(unittest.TestCase):
@@ -41,7 +43,25 @@ class BusinessRuleTests(unittest.TestCase):
             ).all()
         )
 
+    def test_zero_demand_penalizes_false_positive_forecasts(self):
+        actual = np.zeros(3)
+        predicted = np.array([0.0, 2.0, 1.0])
+
+        self.assertEqual(_wape(actual, predicted), 3.0)
+        self.assertEqual(_bias(actual, predicted), 3.0)
+        self.assertEqual(_wape(actual, np.zeros(3)), 0.0)
+
+    def test_forecast_metrics_reject_invalid_inputs(self):
+        invalid_pairs = [
+            (np.array([]), np.array([])),
+            (np.array([1.0]), np.array([1.0, 2.0])),
+            (np.array([1.0]), np.array([np.nan])),
+            (np.array([1.0]), np.array([-1.0])),
+        ]
+        for actual, predicted in invalid_pairs:
+            with self.subTest(actual=actual, predicted=predicted), self.assertRaises(ValueError):
+                _wape(actual, predicted)
+
 
 if __name__ == "__main__":
     unittest.main()
-

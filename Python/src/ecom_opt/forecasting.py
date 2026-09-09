@@ -30,14 +30,33 @@ FEATURE_COLUMNS = [
 ]
 
 
+def _validate_metric_inputs(
+    actual: np.ndarray, predicted: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Validate demand vectors before computing model-selection metrics."""
+    actual_values = np.asarray(actual, dtype=float)
+    predicted_values = np.asarray(predicted, dtype=float)
+    if actual_values.ndim != 1 or predicted_values.ndim != 1:
+        raise ValueError("Forecast metric inputs must be one-dimensional")
+    if actual_values.size == 0 or actual_values.shape != predicted_values.shape:
+        raise ValueError("Actual and predicted demand must be non-empty and aligned")
+    if not np.isfinite(actual_values).all() or not np.isfinite(predicted_values).all():
+        raise ValueError("Forecast metric inputs must be finite")
+    if (actual_values < 0).any() or (predicted_values < 0).any():
+        raise ValueError("Demand values must be non-negative")
+    return actual_values, predicted_values
+
+
 def _wape(actual: np.ndarray, predicted: np.ndarray) -> float:
-    denominator = np.abs(actual).sum()
-    return float(np.abs(actual - predicted).sum() / denominator) if denominator else 0.0
+    actual_values, predicted_values = _validate_metric_inputs(actual, predicted)
+    denominator = max(float(actual_values.sum()), 1.0)
+    return float(np.abs(actual_values - predicted_values).sum() / denominator)
 
 
 def _bias(actual: np.ndarray, predicted: np.ndarray) -> float:
-    denominator = np.abs(actual).sum()
-    return float((predicted - actual).sum() / denominator) if denominator else 0.0
+    actual_values, predicted_values = _validate_metric_inputs(actual, predicted)
+    denominator = max(float(actual_values.sum()), 1.0)
+    return float((predicted_values - actual_values).sum() / denominator)
 
 
 def _metric_row(sku: str, model: str, actual: np.ndarray, predicted: np.ndarray) -> dict:
@@ -259,4 +278,3 @@ if __name__ == "__main__":
     print(f"forecast_results: {len(forecast):,} rows")
     print(f"model_comparison: {len(comparison):,} rows")
     print(f"forecast_backtest: {len(backtest):,} rows")
-
