@@ -260,3 +260,7 @@ Statistics · Business Intelligence · Forecasting · Entrepreneurship
 ## License
 
 This project is released under the [MIT License](LICENSE).
+
+### Analytical input and export controls
+
+Replenishment pack rounding requires a strictly positive integer CasePack (booleans and fractional sizes are rejected). Order quantities must be finite and non-negative. Invalid values raise ValueError before an order recommendation is produced; valid quantities round upward to whole packs.
