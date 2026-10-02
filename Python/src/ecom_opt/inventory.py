@@ -10,7 +10,15 @@ from .config import DATA_DIR, SCENARIOS
 
 
 def _round_to_pack(value: float, case_pack: int) -> int:
-    return int(math.ceil(max(0, value) / case_pack) * case_pack)
+    if (
+        isinstance(case_pack, (bool, np.bool_))
+        or not isinstance(case_pack, (int, np.integer))
+        or case_pack <= 0
+    ):
+        raise ValueError("case_pack must be a positive integer")
+    if not math.isfinite(value) or value < 0:
+        raise ValueError("order quantity must be finite and non-negative")
+    return int(math.ceil(value / case_pack) * case_pack)
 
 
 def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -89,7 +97,7 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             cycle_stock = max(eoq / 2, avg_weekly * 4)
             raw_order = max(0.0, reorder_point + cycle_stock - inventory_position)
             raw_order = max(raw_order, float(row["MOQ"])) if raw_order > 0 else 0
-            recommended_qty = _round_to_pack(raw_order, int(row["CasePack"]))
+            recommended_qty = _round_to_pack(raw_order, row["CasePack"])
             projected_wos = (
                 inventory_position / avg_weekly if avg_weekly > 0 else np.nan
             )
