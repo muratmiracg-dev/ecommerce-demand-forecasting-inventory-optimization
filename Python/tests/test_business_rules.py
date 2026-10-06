@@ -2,9 +2,9 @@ import unittest
 
 import numpy as np
 import pandas as pd
-
 from ecom_opt.config import DATA_DIR
 from ecom_opt.forecasting import _bias, _wape
+from ecom_opt.inventory import _validate_inventory_inputs
 
 
 class BusinessRuleTests(unittest.TestCase):
@@ -12,9 +12,7 @@ class BusinessRuleTests(unittest.TestCase):
     def setUpClass(cls):
         cls.products = pd.read_csv(DATA_DIR / "dim_product.csv")
         cls.forecast = pd.read_csv(DATA_DIR / "forecast_results.csv")
-        cls.replenishment = pd.read_csv(
-            DATA_DIR / "replenishment_recommendations.csv"
-        )
+        cls.replenishment = pd.read_csv(DATA_DIR / "replenishment_recommendations.csv")
         cls.metrics = pd.read_csv(DATA_DIR / "model_comparison.csv")
 
     def test_forecast_grain(self):
@@ -30,8 +28,7 @@ class BusinessRuleTests(unittest.TestCase):
         pack_lookup = self.products.set_index("SKU")["CasePack"]
         for _, row in self.replenishment.iterrows():
             self.assertEqual(
-                int(row["RecommendedOrderQty"])
-                % int(pack_lookup.loc[row["SKU"]]),
+                int(row["RecommendedOrderQty"]) % int(pack_lookup.loc[row["SKU"]]),
                 0,
             )
 
@@ -59,8 +56,50 @@ class BusinessRuleTests(unittest.TestCase):
             (np.array([1.0]), np.array([-1.0])),
         ]
         for actual, predicted in invalid_pairs:
-            with self.subTest(actual=actual, predicted=predicted), self.assertRaises(ValueError):
+            with (
+                self.subTest(actual=actual, predicted=predicted),
+                self.assertRaises(ValueError),
+            ):
                 _wape(actual, predicted)
+
+    def test_inventory_inputs_fail_closed_on_invalid_decision_data(self):
+        products = pd.DataFrame(
+            {
+                "SKU": ["SKU-1"],
+                "UnitCostTRY": [10.0],
+                "TargetServiceLevel": [0.95],
+                "LeadTimeDays": [7],
+                "MOQ": [10],
+                "CasePack": [5],
+            }
+        )
+        suppliers = pd.DataFrame({"SupplierID": ["SUP-1"], "OrderCostTRY": [20.0]})
+        inventory = pd.DataFrame({"EndingOnHand": [10], "OnOrderUnits": [0]})
+        forecast = pd.DataFrame(
+            {
+                "ForecastUnits": [20.0],
+                "ForecastRevenueTRY": [200.0],
+                "ResidualStdUnits": [2.0],
+            }
+        )
+        _validate_inventory_inputs(products, suppliers, inventory, forecast)
+
+        for frame_name, column, value in (
+            ("products", "TargetServiceLevel", 1.2),
+            ("products", "CasePack", 2.5),
+            ("inventory", "EndingOnHand", -1),
+            ("forecast", "ResidualStdUnits", np.nan),
+        ):
+            frames = {
+                "products": products.copy(),
+                "suppliers": suppliers.copy(),
+                "inventory": inventory.copy(),
+                "forecast": forecast.copy(),
+            }
+            frames[frame_name][column] = frames[frame_name][column].astype(object)
+            frames[frame_name].loc[0, column] = value
+            with self.subTest(column=column), self.assertRaises(ValueError):
+                _validate_inventory_inputs(**frames)
 
 
 if __name__ == "__main__":

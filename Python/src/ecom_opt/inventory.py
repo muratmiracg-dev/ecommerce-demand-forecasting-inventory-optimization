@@ -21,6 +21,48 @@ def _round_to_pack(value: float, case_pack: int) -> int:
     return int(math.ceil(value / case_pack) * case_pack)
 
 
+def _validate_inventory_inputs(
+    products: pd.DataFrame,
+    suppliers: pd.DataFrame,
+    inventory: pd.DataFrame,
+    forecast: pd.DataFrame,
+) -> None:
+    """Fail closed before invalid master data can become a purchase recommendation."""
+    for frame, key, label in (
+        (products, "SKU", "product"),
+        (suppliers, "SupplierID", "supplier"),
+    ):
+        if frame[key].isna().any() or frame[key].duplicated().any():
+            raise ValueError(f"{label} keys must be present and unique")
+
+    numeric_contracts = (
+        (
+            products,
+            ("UnitCostTRY", "TargetServiceLevel", "LeadTimeDays", "MOQ", "CasePack"),
+        ),
+        (suppliers, ("OrderCostTRY",)),
+        (inventory, ("EndingOnHand", "OnOrderUnits")),
+        (forecast, ("ForecastUnits", "ForecastRevenueTRY", "ResidualStdUnits")),
+    )
+    for frame, columns in numeric_contracts:
+        values = frame.loc[:, columns].apply(pd.to_numeric, errors="coerce")
+        if (
+            not np.isfinite(values.to_numpy(dtype=float)).all()
+            or (values < 0).any().any()
+        ):
+            raise ValueError(
+                f"{', '.join(columns)} must contain finite non-negative values"
+            )
+    if not products["TargetServiceLevel"].between(0, 1, inclusive="neither").all():
+        raise ValueError("TargetServiceLevel must be strictly between 0 and 1")
+    for column in ("LeadTimeDays", "MOQ", "CasePack"):
+        values = products[column]
+        if (values <= 0).any() or not values.map(
+            lambda value: isinstance(value, (int, np.integer))
+        ).all():
+            raise ValueError(f"{column} must contain positive integers")
+
+
 def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     products = pd.read_csv(DATA_DIR / "dim_product.csv", parse_dates=["LaunchDate"])
     suppliers = pd.read_csv(DATA_DIR / "dim_supplier.csv")
@@ -30,17 +72,16 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     forecast = pd.read_csv(DATA_DIR / "forecast_results.csv", parse_dates=["WeekStart"])
     metrics = pd.read_csv(DATA_DIR / "model_comparison.csv")
 
+    _validate_inventory_inputs(products, suppliers, inventory, forecast)
+
     latest_week = inventory["WeekStart"].max()
     latest_inventory = inventory[inventory["WeekStart"] == latest_week].copy()
-    forecast_summary = (
-        forecast.groupby("SKU", as_index=False)
-        .agg(
-            AnnualForecastUnits=("ForecastUnits", "sum"),
-            AverageWeeklyForecastUnits=("ForecastUnits", "mean"),
-            ForecastRevenueTRY=("ForecastRevenueTRY", "sum"),
-            ResidualStdUnits=("ResidualStdUnits", "mean"),
-            ChampionModel=("ChampionModel", "first"),
-        )
+    forecast_summary = forecast.groupby("SKU", as_index=False).agg(
+        AnnualForecastUnits=("ForecastUnits", "sum"),
+        AverageWeeklyForecastUnits=("ForecastUnits", "mean"),
+        ForecastRevenueTRY=("ForecastRevenueTRY", "sum"),
+        ResidualStdUnits=("ResidualStdUnits", "mean"),
+        ChampionModel=("ChampionModel", "first"),
     )
     champion_metrics = metrics[metrics["ChampionFlag"]].copy()
     champion_metrics = champion_metrics[["SKU", "WAPE", "Bias"]].rename(
@@ -48,13 +89,21 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     )
     base = (
         products.merge(
-            suppliers[["SupplierID", "SupplierName", "OrderCostTRY", "OnTimeDeliveryRate"]],
+            suppliers[
+                ["SupplierID", "SupplierName", "OrderCostTRY", "OnTimeDeliveryRate"]
+            ],
             on="SupplierID",
             how="left",
         )
         .merge(
             latest_inventory[
-                ["SKU", "EndingOnHand", "OnOrderUnits", "InventoryValueTRY", "WeeksOfSupply"]
+                [
+                    "SKU",
+                    "EndingOnHand",
+                    "OnOrderUnits",
+                    "InventoryValueTRY",
+                    "WeeksOfSupply",
+                ]
             ],
             on="SKU",
             how="left",
@@ -147,21 +196,18 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     recommendations = recommendations.sort_values(
         ["Action", "RecommendedInvestmentTRY"], ascending=[True, False]
     )
-    summaries = (
-        scenarios.groupby("Scenario", as_index=False)
-        .agg(
-            ForecastUnits=("AnnualForecastUnits", "sum"),
-            ForecastRevenueTRY=("ForecastRevenueTRY", "sum"),
-            RecommendedInvestmentTRY=("RecommendedInvestmentTRY", "sum"),
-            RecommendedOrderUnits=("RecommendedOrderQty", "sum"),
-            AverageWeeksOfSupply=("ProjectedWeeksOfSupply", "mean"),
-            AverageSafetyStockUnits=("SafetyStockUnits", "mean"),
-            SKUsToOrder=("Action", lambda values: int((values == "ORDER NOW").sum())),
-            OverstockReviewSKUs=(
-                "Action",
-                lambda values: int((values == "OVERSTOCK REVIEW").sum()),
-            ),
-        )
+    summaries = scenarios.groupby("Scenario", as_index=False).agg(
+        ForecastUnits=("AnnualForecastUnits", "sum"),
+        ForecastRevenueTRY=("ForecastRevenueTRY", "sum"),
+        RecommendedInvestmentTRY=("RecommendedInvestmentTRY", "sum"),
+        RecommendedOrderUnits=("RecommendedOrderQty", "sum"),
+        AverageWeeksOfSupply=("ProjectedWeeksOfSupply", "mean"),
+        AverageSafetyStockUnits=("SafetyStockUnits", "mean"),
+        SKUsToOrder=("Action", lambda values: int((values == "ORDER NOW").sum())),
+        OverstockReviewSKUs=(
+            "Action",
+            lambda values: int((values == "OVERSTOCK REVIEW").sum()),
+        ),
     )
     summaries["ProjectedGrossMarginTRY"] = (
         summaries["ForecastRevenueTRY"] * 0.58
@@ -170,9 +216,7 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         summaries["RecommendedInvestmentTRY"] / summaries["ForecastRevenueTRY"]
     ).round(4)
 
-    recommendations.to_csv(
-        DATA_DIR / "replenishment_recommendations.csv", index=False
-    )
+    recommendations.to_csv(DATA_DIR / "replenishment_recommendations.csv", index=False)
     scenarios.to_csv(DATA_DIR / "inventory_scenarios.csv", index=False)
     summaries.to_csv(DATA_DIR / "scenario_summary.csv", index=False)
     return recommendations, scenarios, summaries
@@ -183,4 +227,3 @@ if __name__ == "__main__":
     print(f"replenishment_recommendations: {len(recommendations):,} rows")
     print(f"inventory_scenarios: {len(scenarios):,} rows")
     print(summary.to_string(index=False))
-
