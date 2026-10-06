@@ -93,6 +93,11 @@ The recommended order quantity covers the reorder point and cycle stock, then:
 4. Classifies the SKU as `ORDER NOW`, `MONITOR`, `HEALTHY`, or
    `OVERSTOCK REVIEW`.
 
+Before these calculations, the engine rejects duplicate master-data keys, non-finite or
+negative cost, stock, demand, revenue, and uncertainty values, invalid service levels, and
+non-integer lead-time, MOQ, or case-pack values. This prevents malformed inputs from silently
+becoming purchase recommendations.
+
 ## 7. Planning Scenarios
 
 | Scenario | Demand multiplier | Service-level change | Lead-time change |
