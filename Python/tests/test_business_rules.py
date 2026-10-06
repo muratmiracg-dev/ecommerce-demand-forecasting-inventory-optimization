@@ -96,6 +96,7 @@ class BusinessRuleTests(unittest.TestCase):
                 "inventory": inventory.copy(),
                 "forecast": forecast.copy(),
             }
+            frames[frame_name][column] = frames[frame_name][column].astype(object)
             frames[frame_name].loc[0, column] = value
             with self.subTest(column=column), self.assertRaises(ValueError):
                 _validate_inventory_inputs(**frames)
