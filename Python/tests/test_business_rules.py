@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 import pandas as pd
 from ecom_opt.config import DATA_DIR
-from ecom_opt.forecasting import _bias, _wape
+from ecom_opt.forecasting import _bias, _prepare_history, _train_ml, _wape
 from ecom_opt.inventory import _validate_inventory_inputs
 
 
@@ -61,6 +61,21 @@ class BusinessRuleTests(unittest.TestCase):
                 self.assertRaises(ValueError),
             ):
                 _wape(actual, predicted)
+
+    def test_training_window_rejects_ambiguous_or_oversized_values(self):
+        sales = pd.read_csv(
+            DATA_DIR / "fact_weekly_sales.csv", parse_dates=["WeekStart"]
+        )
+        products = pd.read_csv(DATA_DIR / "dim_product.csv", parse_dates=["LaunchDate"])
+        history = _prepare_history(sales, products)
+        for test_weeks, error in (
+            (True, TypeError),
+            (12.5, TypeError),
+            (0, ValueError),
+            (999, ValueError),
+        ):
+            with self.subTest(test_weeks=test_weeks), self.assertRaises(error):
+                _train_ml(history, test_weeks=test_weeks)
 
     def test_inventory_inputs_fail_closed_on_invalid_decision_data(self):
         products = pd.DataFrame(

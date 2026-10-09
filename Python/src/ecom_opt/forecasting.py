@@ -11,7 +11,6 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from .config import DATA_DIR, FORECAST_START, FORECAST_WEEKS, RANDOM_SEED
 from .data_generation import _campaign_for
 
-
 FEATURE_COLUMNS = [
     "SKUCode",
     "CategoryCode",
@@ -59,7 +58,9 @@ def _bias(actual: np.ndarray, predicted: np.ndarray) -> float:
     return float((predicted_values - actual_values).sum() / denominator)
 
 
-def _metric_row(sku: str, model: str, actual: np.ndarray, predicted: np.ndarray) -> dict:
+def _metric_row(
+    sku: str, model: str, actual: np.ndarray, predicted: np.ndarray
+) -> dict:
     return {
         "SKU": sku,
         "Model": model,
@@ -71,15 +72,12 @@ def _metric_row(sku: str, model: str, actual: np.ndarray, predicted: np.ndarray)
 
 
 def _prepare_history(sales: pd.DataFrame, products: pd.DataFrame) -> pd.DataFrame:
-    history = (
-        sales.groupby(["WeekStart", "SKU"], as_index=False)
-        .agg(
-            Demand=("EstimatedDemandUnits", "sum"),
-            UnitsSold=("UnitsSold", "sum"),
-            NetRevenueTRY=("NetRevenueTRY", "sum"),
-            DiscountPct=("DiscountPct", "mean"),
-            PromoFlag=("PromotionFlag", "max"),
-        )
+    history = sales.groupby(["WeekStart", "SKU"], as_index=False).agg(
+        Demand=("EstimatedDemandUnits", "sum"),
+        UnitsSold=("UnitsSold", "sum"),
+        NetRevenueTRY=("NetRevenueTRY", "sum"),
+        DiscountPct=("DiscountPct", "mean"),
+        PromoFlag=("PromotionFlag", "max"),
     )
     history["WeekStart"] = pd.to_datetime(history["WeekStart"])
     product_cols = products[["SKU", "Category", "ListPriceTRY"]].copy()
@@ -87,7 +85,8 @@ def _prepare_history(sales: pd.DataFrame, products: pd.DataFrame) -> pd.DataFram
     history = history.sort_values(["SKU", "WeekStart"]).reset_index(drop=True)
     sku_map = {sku: idx for idx, sku in enumerate(sorted(history["SKU"].unique()))}
     category_map = {
-        category: idx for idx, category in enumerate(sorted(history["Category"].unique()))
+        category: idx
+        for idx, category in enumerate(sorted(history["Category"].unique()))
     }
     history["SKUCode"] = history["SKU"].map(sku_map)
     history["CategoryCode"] = history["Category"].map(category_map)
@@ -118,9 +117,15 @@ def _prepare_history(sales: pd.DataFrame, products: pd.DataFrame) -> pd.DataFram
 
 def _train_ml(history: pd.DataFrame, test_weeks: int = 13):
     max_week = history["WeekIndex"].max()
+    if type(test_weeks) is not int:
+        raise TypeError("test_weeks must be an integer")
+    if test_weeks < 1 or not np.isfinite(max_week) or test_weeks >= max_week:
+        raise ValueError("test_weeks must leave at least one training week")
     train = history[(history["WeekIndex"] <= max_week - test_weeks)].dropna(
         subset=FEATURE_COLUMNS
     )
+    if train.empty:
+        raise ValueError("forecast training data is empty after feature preparation")
     model = HistGradientBoostingRegressor(
         loss="squared_error",
         learning_rate=0.06,
@@ -140,7 +145,11 @@ def run_forecasting() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     ml_model = _train_ml(history)
     max_week = int(history["WeekIndex"].max())
     test_start = max_week - 12
-    test = history[history["WeekIndex"] >= test_start].dropna(subset=FEATURE_COLUMNS).copy()
+    test = (
+        history[history["WeekIndex"] >= test_start]
+        .dropna(subset=FEATURE_COLUMNS)
+        .copy()
+    )
     test["MLPrediction"] = np.maximum(0, ml_model.predict(test[FEATURE_COLUMNS]))
 
     metrics = []
@@ -166,7 +175,9 @@ def run_forecasting() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                         "Model": model_name,
                         "ActualDemandUnits": round(float(actual_value), 4),
                         "PredictedDemandUnits": round(float(predicted_value), 4),
-                        "AbsoluteErrorUnits": round(float(abs(actual_value - predicted_value)), 4),
+                        "AbsoluteErrorUnits": round(
+                            float(abs(actual_value - predicted_value)), 4
+                        ),
                     }
                 )
 
@@ -205,7 +216,9 @@ def run_forecasting() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     category_codes = history.groupby("Category")["CategoryCode"].first().to_dict()
     histories = {
         sku: deque(
-            history.loc[history["SKU"] == sku].sort_values("WeekStart")["Demand"].tolist(),
+            history.loc[history["SKU"] == sku]
+            .sort_values("WeekStart")["Demand"]
+            .tolist(),
             maxlen=260,
         )
         for sku in sorted(history["SKU"].unique())
@@ -268,8 +281,12 @@ def run_forecasting() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     forecast_df = pd.DataFrame(future_rows)
     backtest_df = pd.DataFrame(backtest_rows)
     metric_df.to_csv(DATA_DIR / "model_comparison.csv", index=False)
-    backtest_df.to_csv(DATA_DIR / "forecast_backtest.csv", index=False, date_format="%Y-%m-%d")
-    forecast_df.to_csv(DATA_DIR / "forecast_results.csv", index=False, date_format="%Y-%m-%d")
+    backtest_df.to_csv(
+        DATA_DIR / "forecast_backtest.csv", index=False, date_format="%Y-%m-%d"
+    )
+    forecast_df.to_csv(
+        DATA_DIR / "forecast_results.csv", index=False, date_format="%Y-%m-%d"
+    )
     return forecast_df, metric_df, backtest_df
 
 
