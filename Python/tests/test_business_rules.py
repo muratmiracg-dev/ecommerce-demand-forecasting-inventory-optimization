@@ -3,11 +3,22 @@ import unittest
 import numpy as np
 import pandas as pd
 from ecom_opt.config import DATA_DIR
+from ecom_opt.data_generation import _seasonality
 from ecom_opt.forecasting import _bias, _prepare_history, _train_ml, _wape
 from ecom_opt.inventory import _validate_inventory_inputs
 
 
 class BusinessRuleTests(unittest.TestCase):
+    def test_seasonality_rejects_invalid_calendar_and_category_inputs(self):
+        for args in (
+            ("Unknown", 1, 1),
+            ("Dresses", 0, 1),
+            ("Dresses", True, 1),
+            ("Dresses", 1, 13),
+        ):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                _seasonality(*args)
+
     @classmethod
     def setUpClass(cls):
         cls.products = pd.read_csv(DATA_DIR / "dim_product.csv")
