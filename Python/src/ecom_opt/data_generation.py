@@ -36,12 +36,78 @@ CATEGORY_PROFILES = {
 }
 
 PRODUCT_WORDS = {
-    "Dresses": ("Satin", "Midi", "Wrap", "Linen", "Evening", "Ribbed", "Floral", "Minimal", "Pleated", "Signature"),
-    "Knitwear": ("Merino", "Cable", "Soft", "Ribbed", "Mockneck", "Cardigan", "Fine", "Oversized", "Crew", "Essential"),
-    "Outerwear": ("Trench", "Wool", "Puffer", "Tailored", "Cropped", "Belted", "Quilted", "Classic", "Urban", "Storm"),
-    "Tops": ("Silk", "Cotton", "Linen", "Draped", "Bodysuit", "Oxford", "Essential", "Relaxed", "Studio", "Signature"),
-    "Bottoms": ("Tailored", "Wide-Leg", "Straight", "Satin", "Pleated", "Cargo", "Cropped", "Relaxed", "Classic", "Studio"),
-    "Accessories": ("Leather", "Silk", "Chain", "Minimal", "Signature", "Structured", "Everyday", "Statement", "Classic", "Luxe"),
+    "Dresses": (
+        "Satin",
+        "Midi",
+        "Wrap",
+        "Linen",
+        "Evening",
+        "Ribbed",
+        "Floral",
+        "Minimal",
+        "Pleated",
+        "Signature",
+    ),
+    "Knitwear": (
+        "Merino",
+        "Cable",
+        "Soft",
+        "Ribbed",
+        "Mockneck",
+        "Cardigan",
+        "Fine",
+        "Oversized",
+        "Crew",
+        "Essential",
+    ),
+    "Outerwear": (
+        "Trench",
+        "Wool",
+        "Puffer",
+        "Tailored",
+        "Cropped",
+        "Belted",
+        "Quilted",
+        "Classic",
+        "Urban",
+        "Storm",
+    ),
+    "Tops": (
+        "Silk",
+        "Cotton",
+        "Linen",
+        "Draped",
+        "Bodysuit",
+        "Oxford",
+        "Essential",
+        "Relaxed",
+        "Studio",
+        "Signature",
+    ),
+    "Bottoms": (
+        "Tailored",
+        "Wide-Leg",
+        "Straight",
+        "Satin",
+        "Pleated",
+        "Cargo",
+        "Cropped",
+        "Relaxed",
+        "Classic",
+        "Studio",
+    ),
+    "Accessories": (
+        "Leather",
+        "Silk",
+        "Chain",
+        "Minimal",
+        "Signature",
+        "Structured",
+        "Everyday",
+        "Statement",
+        "Classic",
+        "Luxe",
+    ),
 }
 
 SUPPLIER_NAMES = (
@@ -68,6 +134,16 @@ def _ensure_dirs() -> None:
 
 
 def _seasonality(category: str, week_of_year: int, month: int) -> float:
+    if category not in CATEGORY_PROFILES:
+        raise ValueError(f"Unknown product category: {category}")
+    if (
+        isinstance(week_of_year, bool)
+        or not isinstance(week_of_year, int)
+        or not 1 <= week_of_year <= 53
+    ):
+        raise ValueError("week_of_year must be an integer between 1 and 53")
+    if isinstance(month, bool) or not isinstance(month, int) or not 1 <= month <= 12:
+        raise ValueError("month must be an integer between 1 and 12")
     profile = CATEGORY_PROFILES[category]
     angle = 2 * math.pi * (week_of_year - 1) / 52.0
     if profile.seasonality == "summer":
@@ -112,7 +188,9 @@ def build_suppliers(rng: np.random.Generator) -> pd.DataFrame:
                 "SupplierID": f"SUP-{idx:03d}",
                 "SupplierName": name,
                 "Country": "Türkiye",
-                "Region": rng.choice(["Istanbul", "Marmara", "Aegean", "Central Anatolia"]),
+                "Region": rng.choice(
+                    ["Istanbul", "Marmara", "Aegean", "Central Anatolia"]
+                ),
                 "StandardLeadTimeDays": lead_time,
                 "OnTimeDeliveryRate": round(float(rng.uniform(0.84, 0.97)), 4),
                 "QualityAcceptanceRate": round(float(rng.uniform(0.965, 0.997)), 4),
@@ -130,22 +208,38 @@ def build_products(rng: np.random.Generator, suppliers: pd.DataFrame) -> pd.Data
         profile = CATEGORY_PROFILES[category]
         for product_index in range(1, 11):
             sku = f"{category[:3].upper()}-{product_index:03d}"
-            list_price = round(float(rng.uniform(profile.price_low, profile.price_high)) / 10) * 10
-            unit_cost = round(list_price * float(rng.normal(profile.cost_ratio, 0.025)), 2)
+            list_price = (
+                round(float(rng.uniform(profile.price_low, profile.price_high)) / 10)
+                * 10
+            )
+            unit_cost = round(
+                list_price * float(rng.normal(profile.cost_ratio, 0.025)), 2
+            )
             case_pack = int(rng.choice([4, 6, 8, 10, 12]))
             moq = int(case_pack * rng.choice([3, 4, 5, 6]))
-            service = float(rng.choice([0.93, 0.95, 0.97, 0.98], p=[0.10, 0.38, 0.38, 0.14]))
-            supplier_id = supplier_ids[(category_index * 2 + product_index) % len(supplier_ids)]
+            service = float(
+                rng.choice([0.93, 0.95, 0.97, 0.98], p=[0.10, 0.38, 0.38, 0.14])
+            )
+            supplier_id = supplier_ids[
+                (category_index * 2 + product_index) % len(supplier_ids)
+            ]
             supplier_lead = int(
-                suppliers.loc[suppliers["SupplierID"] == supplier_id, "StandardLeadTimeDays"].iloc[0]
+                suppliers.loc[
+                    suppliers["SupplierID"] == supplier_id, "StandardLeadTimeDays"
+                ].iloc[0]
             )
             rows.append(
                 {
                     "SKU": sku,
                     "ProductName": f"{PRODUCT_WORDS[category][product_index - 1]} {category[:-1] if category.endswith('s') else category}",
                     "Category": category,
-                    "Segment": rng.choice(["Core", "Premium", "Trend"], p=[0.48, 0.27, 0.25]),
-                    "Collection": rng.choice(["Permanent", "Spring/Summer", "Autumn/Winter"], p=[0.35, 0.33, 0.32]),
+                    "Segment": rng.choice(
+                        ["Core", "Premium", "Trend"], p=[0.48, 0.27, 0.25]
+                    ),
+                    "Collection": rng.choice(
+                        ["Permanent", "Spring/Summer", "Autumn/Winter"],
+                        p=[0.35, 0.33, 0.32],
+                    ),
                     "SupplierID": supplier_id,
                     "UnitCostTRY": unit_cost,
                     "ListPriceTRY": list_price,
@@ -154,9 +248,14 @@ def build_products(rng: np.random.Generator, suppliers: pd.DataFrame) -> pd.Data
                     "MOQ": moq,
                     "CasePack": case_pack,
                     "TargetServiceLevel": service,
-                    "BaseWeeklyDemand": round(profile.base_demand * float(rng.uniform(0.68, 1.34)), 2),
-                    "LaunchDate": pd.Timestamp("2022-01-03") + pd.Timedelta(days=int(rng.integers(0, 660))),
-                    "LifecycleStage": rng.choice(["Growth", "Mature", "Core"], p=[0.25, 0.40, 0.35]),
+                    "BaseWeeklyDemand": round(
+                        profile.base_demand * float(rng.uniform(0.68, 1.34)), 2
+                    ),
+                    "LaunchDate": pd.Timestamp("2022-01-03")
+                    + pd.Timedelta(days=int(rng.integers(0, 660))),
+                    "LifecycleStage": rng.choice(
+                        ["Growth", "Mature", "Core"], p=[0.25, 0.40, 0.35]
+                    ),
                 }
             )
     return pd.DataFrame(rows)
@@ -164,7 +263,9 @@ def build_products(rng: np.random.Generator, suppliers: pd.DataFrame) -> pd.Data
 
 def build_calendar() -> pd.DataFrame:
     history_weeks = pd.date_range(HISTORY_START, HISTORY_END, freq="W-MON")
-    forecast_weeks = pd.date_range(history_weeks[-1] + pd.Timedelta(days=7), periods=52, freq="W-MON")
+    forecast_weeks = pd.date_range(
+        history_weeks[-1] + pd.Timedelta(days=7), periods=52, freq="W-MON"
+    )
     weeks = history_weeks.append(forecast_weeks)
     rows = []
     for idx, week in enumerate(weeks):
@@ -202,7 +303,9 @@ def build_promotions(calendar: pd.DataFrame) -> pd.DataFrame:
                         "Category": category,
                         "DiscountPct": discount,
                         "MarketingSpendTRY": round(
-                            18_000 * (1 + discount * 3) * (1.25 if campaign == "Black Friday" else 1),
+                            18_000
+                            * (1 + discount * 3)
+                            * (1.25 if campaign == "Black Friday" else 1),
                             2,
                         ),
                     }
@@ -229,7 +332,9 @@ def build_sales_inventory_and_orders(
         lead_time_weeks = max(1, math.ceil(int(product["LeadTimeDays"]) / 7))
         base_demand = float(product["BaseWeeklyDemand"])
         on_hand = int(round(base_demand * rng.uniform(8.0, 12.0)))
-        pending_receipts: dict[int, list[tuple[str, int, pd.Timestamp]]] = defaultdict(list)
+        pending_receipts: dict[int, list[tuple[str, int, pd.Timestamp]]] = defaultdict(
+            list
+        )
 
         for week_idx, week in enumerate(history_weeks):
             week = pd.Timestamp(week)
@@ -247,15 +352,27 @@ def build_sales_inventory_and_orders(
             campaign, discount_pct = _campaign_for(week, category)
             trend = 1.0 + 0.00215 * week_idx
             seasonal = _seasonality(category, int(week.isocalendar().week), week.month)
-            macro = 1.0 + 0.025 * math.sin(week_idx / 11.5) + 0.015 * math.cos(week_idx / 6.0)
-            promo_uplift = 1.0 + discount_pct * (1.35 if category == "Outerwear" else 1.75)
+            macro = (
+                1.0
+                + 0.025 * math.sin(week_idx / 11.5)
+                + 0.015 * math.cos(week_idx / 6.0)
+            )
+            promo_uplift = 1.0 + discount_pct * (
+                1.35 if category == "Outerwear" else 1.75
+            )
             black_friday = 1.25 if campaign == "Black Friday" else 1.0
             noise = float(rng.lognormal(mean=-0.015, sigma=0.13))
             latent_demand = max(
                 0,
                 int(
                     rng.poisson(
-                        base_demand * trend * seasonal * macro * promo_uplift * black_friday * noise
+                        base_demand
+                        * trend
+                        * seasonal
+                        * macro
+                        * promo_uplift
+                        * black_friday
+                        * noise
                     )
                 ),
             )
@@ -266,24 +383,40 @@ def build_sales_inventory_and_orders(
             annualized = max(base_demand * 52, 1)
             weekly_std = max(2.0, base_demand * 0.24)
             safety_stock_reference = 1.65 * weekly_std * math.sqrt(lead_time_weeks)
-            reorder_point_reference = math.ceil(base_demand * lead_time_weeks + safety_stock_reference)
-            target_stock = math.ceil(base_demand * (lead_time_weeks + 8) + safety_stock_reference)
-            on_order = sum(qty for receipts in pending_receipts.values() for _, qty, _ in receipts)
+            reorder_point_reference = math.ceil(
+                base_demand * lead_time_weeks + safety_stock_reference
+            )
+            target_stock = math.ceil(
+                base_demand * (lead_time_weeks + 8) + safety_stock_reference
+            )
+            on_order = sum(
+                qty for receipts in pending_receipts.values() for _, qty, _ in receipts
+            )
             reorder_triggered = on_hand + on_order <= reorder_point_reference
 
             if reorder_triggered:
                 supplier = supplier_lookup[product["SupplierID"]]
                 holding_cost = max(float(product["UnitCostTRY"]) * 0.24, 1)
-                eoq = math.sqrt(2 * annualized * float(supplier["OrderCostTRY"]) / holding_cost)
-                raw_qty = max(float(product["MOQ"]), target_stock - on_hand - on_order, eoq)
+                eoq = math.sqrt(
+                    2 * annualized * float(supplier["OrderCostTRY"]) / holding_cost
+                )
+                raw_qty = max(
+                    float(product["MOQ"]), target_stock - on_hand - on_order, eoq
+                )
                 case_pack = int(product["CasePack"])
                 ordered_qty = int(math.ceil(raw_qty / case_pack) * case_pack)
-                variability = int(rng.choice([-1, 0, 0, 0, 1], p=[0.05, 0.24, 0.42, 0.24, 0.05]))
-                receipt_week_idx = min(len(history_weeks) - 1, week_idx + lead_time_weeks + variability)
+                variability = int(
+                    rng.choice([-1, 0, 0, 0, 1], p=[0.05, 0.24, 0.42, 0.24, 0.05])
+                )
+                receipt_week_idx = min(
+                    len(history_weeks) - 1, week_idx + lead_time_weeks + variability
+                )
                 po_id = f"PO-{po_counter:06d}"
                 po_counter += 1
                 pending_receipts[receipt_week_idx].append((po_id, ordered_qty, week))
-                expected_receipt = week + pd.Timedelta(days=int(product["LeadTimeDays"]))
+                expected_receipt = week + pd.Timedelta(
+                    days=int(product["LeadTimeDays"])
+                )
                 actual_receipt = pd.Timestamp(history_weeks[receipt_week_idx])
                 po_rows.append(
                     {
@@ -296,11 +429,16 @@ def build_sales_inventory_and_orders(
                         "OrderedQty": ordered_qty,
                         "ReceivedQty": np.nan,
                         "UnitCostTRY": float(product["UnitCostTRY"]),
-                        "POValueTRY": round(ordered_qty * float(product["UnitCostTRY"]), 2),
+                        "POValueTRY": round(
+                            ordered_qty * float(product["UnitCostTRY"]), 2
+                        ),
                         "PlannedLeadTimeDays": int(product["LeadTimeDays"]),
                         "ActualLeadTimeDays": (actual_receipt - week).days,
-                        "OnTimeFlag": actual_receipt <= expected_receipt + pd.Timedelta(days=3),
-                        "Status": "Open" if actual_receipt > pd.Timestamp(HISTORY_END) else "Received",
+                        "OnTimeFlag": actual_receipt
+                        <= expected_receipt + pd.Timedelta(days=3),
+                        "Status": "Open"
+                        if actual_receipt > pd.Timestamp(HISTORY_END)
+                        else "Received",
                     }
                 )
 
@@ -313,13 +451,17 @@ def build_sales_inventory_and_orders(
                     continue
                 channel_discount = min(
                     0.36,
-                    max(0.0, discount_pct + (0.02 if channel == "Marketplace" else 0.0)),
+                    max(
+                        0.0, discount_pct + (0.02 if channel == "Marketplace" else 0.0)
+                    ),
                 )
                 selling_price = float(product["ListPriceTRY"]) * (1 - channel_discount)
                 gross_sales = channel_qty * float(product["ListPriceTRY"])
                 net_revenue = channel_qty * selling_price
                 cogs = channel_qty * float(product["UnitCostTRY"])
-                channel_share = channel_qty / units_sold if units_sold else CHANNEL_SHARES[channel]
+                channel_share = (
+                    channel_qty / units_sold if units_sold else CHANNEL_SHARES[channel]
+                )
                 sales_rows.append(
                     {
                         "WeekStart": week,
@@ -356,7 +498,9 @@ def build_sales_inventory_and_orders(
                     "LostSalesUnits": lost_sales,
                     "EndingOnHand": on_hand,
                     "OnOrderUnits": open_order_units,
-                    "InventoryValueTRY": round(on_hand * float(product["UnitCostTRY"]), 2),
+                    "InventoryValueTRY": round(
+                        on_hand * float(product["UnitCostTRY"]), 2
+                    ),
                     "WeeksOfSupply": round(weeks_of_supply, 3),
                     "StockoutFlag": lost_sales > 0,
                     "ReorderPointReference": reorder_point_reference,
@@ -413,4 +557,3 @@ if __name__ == "__main__":
     generated = generate_all()
     for dataset_name, dataset in generated.items():
         print(f"{dataset_name}: {len(dataset):,} rows")
-
