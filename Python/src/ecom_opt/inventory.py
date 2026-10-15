@@ -35,6 +35,20 @@ def _validate_inventory_inputs(
         if frame[key].isna().any() or frame[key].duplicated().any():
             raise ValueError(f"{label} keys must be present and unique")
 
+    supplier_ids = set(suppliers["SupplierID"])
+    unknown_suppliers = sorted(set(products["SupplierID"]) - supplier_ids)
+    if unknown_suppliers:
+        raise ValueError(
+            f"products reference unknown suppliers: {unknown_suppliers[:5]}"
+        )
+    product_skus = set(products["SKU"])
+    for frame, label in ((inventory, "inventory"), (forecast, "forecast")):
+        if "SKU" not in frame:
+            raise ValueError(f"{label} is missing SKU")
+        unknown_skus = sorted(set(frame["SKU"]) - product_skus)
+        if unknown_skus:
+            raise ValueError(f"{label} references unknown SKUs: {unknown_skus[:5]}")
+
     numeric_contracts = (
         (
             products,
