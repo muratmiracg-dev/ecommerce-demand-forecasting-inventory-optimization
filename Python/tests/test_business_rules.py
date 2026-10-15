@@ -92,6 +92,7 @@ class BusinessRuleTests(unittest.TestCase):
         products = pd.DataFrame(
             {
                 "SKU": ["SKU-1"],
+                "SupplierID": ["SUP-1"],
                 "UnitCostTRY": [10.0],
                 "TargetServiceLevel": [0.95],
                 "LeadTimeDays": [7],
@@ -100,9 +101,12 @@ class BusinessRuleTests(unittest.TestCase):
             }
         )
         suppliers = pd.DataFrame({"SupplierID": ["SUP-1"], "OrderCostTRY": [20.0]})
-        inventory = pd.DataFrame({"EndingOnHand": [10], "OnOrderUnits": [0]})
+        inventory = pd.DataFrame(
+            {"SKU": ["SKU-1"], "EndingOnHand": [10], "OnOrderUnits": [0]}
+        )
         forecast = pd.DataFrame(
             {
+                "SKU": ["SKU-1"],
                 "ForecastUnits": [20.0],
                 "ForecastRevenueTRY": [200.0],
                 "ResidualStdUnits": [2.0],
@@ -126,6 +130,15 @@ class BusinessRuleTests(unittest.TestCase):
             frames[frame_name].loc[0, column] = value
             with self.subTest(column=column), self.assertRaises(ValueError):
                 _validate_inventory_inputs(**frames)
+
+        with self.assertRaisesRegex(ValueError, "unknown suppliers"):
+            _validate_inventory_inputs(
+                products.assign(SupplierID="SUP-404"), suppliers, inventory, forecast
+            )
+        with self.assertRaisesRegex(ValueError, "unknown SKUs"):
+            _validate_inventory_inputs(
+                products, suppliers, inventory.assign(SKU="SKU-404"), forecast
+            )
 
 
 if __name__ == "__main__":
