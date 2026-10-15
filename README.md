@@ -218,6 +218,7 @@ The generated validation report confirms:
 - Finite model performance metrics
 - Demand balance between sold units and estimated lost sales
 - Non-negative inventory balances
+- Product-to-supplier and inventory/forecast-to-product referential integrity
 - Every order recommendation rounded to the case pack
 - Valid PBIP structure: 10 pages, 81 visuals, 5 model tables, 3 relationships
 - No Excel formula errors
