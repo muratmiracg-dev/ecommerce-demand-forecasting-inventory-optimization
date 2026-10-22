@@ -209,6 +209,8 @@ pytest -q
 
 ## Validation
 
+Inventory and forecast inputs enforce a unique, non-null `(SKU, WeekStart)` grain before recommendations are calculated, preventing duplicate snapshots from silently inflating demand or stock positions.
+
 The generated validation report confirms:
 
 - 60 unique SKUs and valid supplier keys
