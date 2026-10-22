@@ -102,11 +102,12 @@ class BusinessRuleTests(unittest.TestCase):
         )
         suppliers = pd.DataFrame({"SupplierID": ["SUP-1"], "OrderCostTRY": [20.0]})
         inventory = pd.DataFrame(
-            {"SKU": ["SKU-1"], "EndingOnHand": [10], "OnOrderUnits": [0]}
+            {"SKU": ["SKU-1"], "WeekStart": [pd.Timestamp("2025-01-06")], "EndingOnHand": [10], "OnOrderUnits": [0]}
         )
         forecast = pd.DataFrame(
             {
                 "SKU": ["SKU-1"],
+                "WeekStart": [pd.Timestamp("2025-01-06")],
                 "ForecastUnits": [20.0],
                 "ForecastRevenueTRY": [200.0],
                 "ResidualStdUnits": [2.0],
@@ -139,6 +140,12 @@ class BusinessRuleTests(unittest.TestCase):
             _validate_inventory_inputs(
                 products, suppliers, inventory.assign(SKU="SKU-404"), forecast
             )
+
+        for frame_name in ("inventory", "forecast"):
+            frames = {"products": products, "suppliers": suppliers, "inventory": inventory, "forecast": forecast}
+            frames[frame_name] = pd.concat([frames[frame_name], frames[frame_name]], ignore_index=True)
+            with self.subTest(frame=frame_name), self.assertRaisesRegex(ValueError, "SKU/WeekStart keys"):
+                _validate_inventory_inputs(**frames)
 
 
 if __name__ == "__main__":
