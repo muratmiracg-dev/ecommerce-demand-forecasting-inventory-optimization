@@ -43,8 +43,13 @@ def _validate_inventory_inputs(
         )
     product_skus = set(products["SKU"])
     for frame, label in ((inventory, "inventory"), (forecast, "forecast")):
-        if "SKU" not in frame:
-            raise ValueError(f"{label} is missing SKU")
+        missing_keys = {"SKU", "WeekStart"} - set(frame.columns)
+        if missing_keys:
+            raise ValueError(f"{label} is missing keys: {', '.join(sorted(missing_keys))}")
+        if frame[["SKU", "WeekStart"]].isna().any().any() or frame.duplicated(
+            ["SKU", "WeekStart"]
+        ).any():
+            raise ValueError(f"{label} SKU/WeekStart keys must be present and unique")
         unknown_skus = sorted(set(frame["SKU"]) - product_skus)
         if unknown_skus:
             raise ValueError(f"{label} references unknown SKUs: {unknown_skus[:5]}")
