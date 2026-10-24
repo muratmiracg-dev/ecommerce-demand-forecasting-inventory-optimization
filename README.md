@@ -209,7 +209,7 @@ pytest -q
 
 ## Validation
 
-Inventory and forecast inputs enforce a unique, non-null `(SKU, WeekStart)` grain before recommendations are calculated, preventing duplicate snapshots from silently inflating demand or stock positions.
+Inventory and forecast inputs enforce a unique, non-null `(SKU, WeekStart)` grain before recommendations are calculated, preventing duplicate snapshots from silently inflating demand or stock positions. The optimizer also requires the latest inventory snapshot to cover every product SKU exactly once; partial snapshots fail closed instead of producing recommendations from missing stock positions.
 
 The generated validation report confirms:
 
