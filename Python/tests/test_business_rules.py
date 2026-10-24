@@ -5,7 +5,10 @@ import pandas as pd
 from ecom_opt.config import DATA_DIR
 from ecom_opt.data_generation import _seasonality
 from ecom_opt.forecasting import _bias, _prepare_history, _train_ml, _wape
-from ecom_opt.inventory import _validate_inventory_inputs
+from ecom_opt.inventory import (
+    _validate_inventory_inputs,
+    _validate_latest_inventory_snapshot,
+)
 
 
 class BusinessRuleTests(unittest.TestCase):
@@ -146,6 +149,20 @@ class BusinessRuleTests(unittest.TestCase):
             frames[frame_name] = pd.concat([frames[frame_name], frames[frame_name]], ignore_index=True)
             with self.subTest(frame=frame_name), self.assertRaisesRegex(ValueError, "SKU/WeekStart keys"):
                 _validate_inventory_inputs(**frames)
+
+
+    def test_latest_inventory_snapshot_must_cover_every_product(self):
+        products = pd.DataFrame({"SKU": ["SKU-1", "SKU-2"]})
+        complete = pd.DataFrame({"SKU": ["SKU-1", "SKU-2"]})
+        partial = pd.DataFrame({"SKU": ["SKU-1"]})
+
+        _validate_latest_inventory_snapshot(products, complete)
+        with self.assertRaisesRegex(ValueError, "missing SKUs"):
+            _validate_latest_inventory_snapshot(products, partial)
+
+        duplicate = pd.DataFrame({"SKU": ["SKU-1", "SKU-1"]})
+        with self.assertRaisesRegex(ValueError, "present and unique"):
+            _validate_latest_inventory_snapshot(products, duplicate)
 
 
 if __name__ == "__main__":
