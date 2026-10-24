@@ -5,10 +5,7 @@ import pandas as pd
 from ecom_opt.config import DATA_DIR
 from ecom_opt.data_generation import _seasonality
 from ecom_opt.forecasting import _bias, _prepare_history, _train_ml, _wape
-from ecom_opt.inventory import (
-    _validate_inventory_inputs,
-    _validate_latest_inventory_snapshot,
-)
+from ecom_opt.inventory import _validate_inventory_inputs, _validate_latest_inventory_snapshot
 
 
 class BusinessRuleTests(unittest.TestCase):
