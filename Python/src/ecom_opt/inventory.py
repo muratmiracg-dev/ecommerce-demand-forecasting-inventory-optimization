@@ -82,6 +82,25 @@ def _validate_inventory_inputs(
             raise ValueError(f"{column} must contain positive integers")
 
 
+def _validate_latest_inventory_snapshot(
+    products: pd.DataFrame,
+    latest_inventory: pd.DataFrame,
+) -> None:
+    """Require a complete, unique stock snapshot before making order decisions."""
+    if latest_inventory["SKU"].isna().any() or latest_inventory["SKU"].duplicated().any():
+        raise ValueError("latest inventory snapshot SKU keys must be present and unique")
+
+    product_skus = set(products["SKU"])
+    snapshot_skus = set(latest_inventory["SKU"])
+    missing = sorted(map(str, product_skus - snapshot_skus))
+    unexpected = sorted(map(str, snapshot_skus - product_skus))
+    if missing or unexpected:
+        raise ValueError(
+            "latest inventory snapshot must match product portfolio; "
+            f"missing SKUs: {missing[:5]}; unexpected SKUs: {unexpected[:5]}"
+        )
+
+
 def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     products = pd.read_csv(DATA_DIR / "dim_product.csv", parse_dates=["LaunchDate"])
     suppliers = pd.read_csv(DATA_DIR / "dim_supplier.csv")
@@ -95,6 +114,7 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
     latest_week = inventory["WeekStart"].max()
     latest_inventory = inventory[inventory["WeekStart"] == latest_week].copy()
+    _validate_latest_inventory_snapshot(products, latest_inventory)
     forecast_summary = forecast.groupby("SKU", as_index=False).agg(
         AnnualForecastUnits=("ForecastUnits", "sum"),
         AverageWeeklyForecastUnits=("ForecastUnits", "mean"),
