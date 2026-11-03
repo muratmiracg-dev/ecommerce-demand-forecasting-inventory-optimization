@@ -196,6 +196,10 @@ python -m ecom_opt.run_pipeline
 pytest -q
 ```
 
+`requirements.txt` pins exact versions so the pipeline reproduces the committed `Data/` outputs
+byte for byte, and CI fails if a regenerated output differs. Newer scikit-learn releases change
+the gradient-boosting forecasts, so upgrade the pins deliberately and commit the regenerated outputs.
+
 On Windows PowerShell:
 
 ```powershell
