@@ -1,7 +1,11 @@
-numpy>=2.0
-pandas>=2.2
-scikit-learn>=1.6
-scipy>=1.14
-matplotlib>=3.9
-reportlab>=4.2
-pytest>=8.3
+# Exact versions that reproduce the committed outputs in Data/ (CI checks this).
+# scikit-learn 1.9 changes HistGradientBoostingRegressor results, which shifts champion
+# models, forecasts and replenishment recommendations. Upgrade deliberately: bump the pins,
+# rerun `python -m ecom_opt.run_pipeline`, review the diffs and commit the regenerated outputs.
+numpy==2.3.5
+pandas==2.3.3
+scikit-learn==1.8.0
+scipy==1.17.1
+matplotlib==3.11.2
+reportlab==5.1.0
+pytest==9.2.0

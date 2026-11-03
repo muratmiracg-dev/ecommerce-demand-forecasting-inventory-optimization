@@ -30,6 +30,9 @@ jobs:
           PYTHONPATH: Python/src
         run: python -m ecom_opt.run_pipeline
 
+      - name: Fail if regenerated outputs differ from the committed Data/ files
+        run: git diff --stat --exit-code -- Data
+
       - name: Run business-rule tests
         env:
           PYTHONPATH: Python/src
