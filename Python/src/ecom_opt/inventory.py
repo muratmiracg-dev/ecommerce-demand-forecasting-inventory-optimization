@@ -243,11 +243,30 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         AverageWeeksOfSupply=("ProjectedWeeksOfSupply", "mean"),
         AverageSafetyStockUnits=("SafetyStockUnits", "mean"),
         SKUsToOrder=("Action", lambda values: int((values == "ORDER NOW").sum())),
+        SKUsWithOrder=(
+            "RecommendedOrderQty",
+            lambda values: int((values > 0).sum()),
+        ),
         OverstockReviewSKUs=(
             "Action",
             lambda values: int((values == "OVERSTOCK REVIEW").sum()),
         ),
     )
+    # The policy tops every SKU up to reorder point + cycle stock, so SKUs above their
+    # reorder point (MONITOR / HEALTHY) can still carry an order. Report the
+    # immediate (ORDER NOW) share separately so the headline investment is not read
+    # as the cost of the immediate-order SKUs alone.
+    immediate = (
+        scenarios[scenarios["Action"] == "ORDER NOW"]
+        .groupby("Scenario")["RecommendedInvestmentTRY"]
+        .sum()
+    )
+    summaries["ImmediateOrderInvestmentTRY"] = (
+        summaries["Scenario"].map(immediate).fillna(0.0).round(2)
+    )
+    summaries["TopUpInvestmentTRY"] = (
+        summaries["RecommendedInvestmentTRY"] - summaries["ImmediateOrderInvestmentTRY"]
+    ).round(2)
     summaries["ProjectedGrossMarginTRY"] = (
         summaries["ForecastRevenueTRY"] * 0.58
     ).round(2)

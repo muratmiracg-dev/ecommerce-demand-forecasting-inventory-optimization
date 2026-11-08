@@ -413,7 +413,7 @@ def page_1(c: canvas.Canvas, d: dict[str, pd.DataFrame]) -> None:
     kpi_card(c, MARGIN, kpi_y, card_w, card_h, "Historical revenue", money_m(historical_revenue), "2023-2025 actual")
     kpi_card(c, MARGIN + card_w + 8, kpi_y, card_w, card_h, "2026 forecast revenue", money_m(base["ForecastRevenueTRY"]), "Base scenario", CYAN)
     kpi_card(c, MARGIN + 2 * (card_w + 8), kpi_y, card_w, card_h, "Champion WAPE", pct(metrics["WAPE"].mean()), "60 SKU backtest", GREEN)
-    kpi_card(c, MARGIN + 3 * (card_w + 8), kpi_y, card_w, card_h, "Inventory investment", money_m(base["RecommendedInvestmentTRY"]), f"{int(base['SKUsToOrder'])} SKUs to order", AMBER)
+    kpi_card(c, MARGIN + 3 * (card_w + 8), kpi_y, card_w, card_h, "Inventory investment", money_m(base["RecommendedInvestmentTRY"]), f"{int(base['SKUsWithOrder'])} SKUs, {int(base['SKUsToOrder'])} immediate", AMBER)
 
     chart_y, chart_h = 126, 236
     left_w = 560
@@ -452,7 +452,7 @@ def page_1(c: canvas.Canvas, d: dict[str, pd.DataFrame]) -> None:
         PAGE_W - 2 * MARGIN,
         70,
         "Executive decision",
-        f"The portfolio generated {money_m(historical_revenue)} in synthetic historical revenue. The base plan forecasts {money_m(base['ForecastRevenueTRY'])} for 2026 and requires {money_m(base['RecommendedInvestmentTRY'])}. Immediate replenishment is concentrated in {int(base['SKUsToOrder'])} SKUs, while the champion model portfolio averages {pct(metrics['WAPE'].mean())} WAPE.",
+        f"The portfolio generated {money_m(historical_revenue)} in synthetic historical revenue. The base plan forecasts {money_m(base['ForecastRevenueTRY'])} for 2026 and requires {money_m(base['RecommendedInvestmentTRY'])} of replenishment across {int(base['SKUsWithOrder'])} SKUs. {money_m(base['ImmediateOrderInvestmentTRY'])} of it is for the {int(base['SKUsToOrder'])} SKUs already at or below their reorder point; the rest tops other SKUs up to reorder point plus cycle stock. The champion model portfolio averages {pct(metrics['WAPE'].mean())} WAPE.",
     )
 
 
@@ -712,7 +712,7 @@ def page_6(c: canvas.Canvas, d: dict[str, pd.DataFrame]) -> None:
     order_units = replenishment["RecommendedOrderQty"].sum()
     suppliers = order_now["SupplierName"].nunique()
     card_w = (PAGE_W - 2 * MARGIN - 16) / 3
-    kpi_card(c, MARGIN, PAGE_H - 162, card_w, 64, "Recommended investment", money_m(investment), "All base-scenario SKUs", AMBER)
+    kpi_card(c, MARGIN, PAGE_H - 162, card_w, 64, "Recommended investment", money_m(investment), f"{int((replenishment['RecommendedOrderQty'] > 0).sum())} SKUs with an order", AMBER)
     kpi_card(c, MARGIN + card_w + 8, PAGE_H - 162, card_w, 64, "Recommended order units", f"{order_units:,.0f}", "MOQ and case-pack compliant", BLUE)
     kpi_card(c, MARGIN + 2 * (card_w + 8), PAGE_H - 162, card_w, 64, "Immediate suppliers", str(suppliers), "Required for ORDER NOW SKUs", CYAN)
     rounded_panel(c, MARGIN, 160, 500, 210)
@@ -875,7 +875,7 @@ def page_9(c: canvas.Canvas, d: dict[str, pd.DataFrame]) -> None:
     card_w = (PAGE_W - 2 * MARGIN - 16) / 3
     growth = scenario.set_index("Scenario").loc["Growth"]
     resilience = scenario.set_index("Scenario").loc["Resilience"]
-    kpi_card(c, MARGIN, PAGE_H - 162, card_w, 64, "Base investment", money_m(base["RecommendedInvestmentTRY"]), f"{int(base['SKUsToOrder'])} SKUs to order", BLUE)
+    kpi_card(c, MARGIN, PAGE_H - 162, card_w, 64, "Base investment", money_m(base["RecommendedInvestmentTRY"]), f"{money_m(base['ImmediateOrderInvestmentTRY'])} immediate ({int(base['SKUsToOrder'])} SKUs)", BLUE)
     kpi_card(c, MARGIN + card_w + 8, PAGE_H - 162, card_w, 64, "Growth investment uplift", pct(growth["RecommendedInvestmentTRY"] / base["RecommendedInvestmentTRY"] - 1), money_m(growth["RecommendedInvestmentTRY"]), GREEN)
     kpi_card(c, MARGIN + 2 * (card_w + 8), PAGE_H - 162, card_w, 64, "Resilience premium", money_m(resilience["RecommendedInvestmentTRY"] - base["RecommendedInvestmentTRY"]), "14-day lead-time shock", RED)
     rounded_panel(c, MARGIN, 160, 480, 210)
