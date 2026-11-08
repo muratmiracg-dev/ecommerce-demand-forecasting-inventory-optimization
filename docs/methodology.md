@@ -93,6 +93,14 @@ The recommended order quantity covers the reorder point and cycle stock, then:
 4. Classifies the SKU as `ORDER NOW`, `MONITOR`, `HEALTHY`, or
    `OVERSTOCK REVIEW`.
 
+Because the quantity tops every SKU up to reorder point plus cycle stock, a SKU
+above its reorder point (`MONITOR` or `HEALTHY`) can still carry an order. Only
+`ORDER NOW` SKUs are at or below the reorder point. `scenario_summary.csv` therefore
+splits the investment into `ImmediateOrderInvestmentTRY` (`ORDER NOW` SKUs) and
+`TopUpInvestmentTRY` (everything else), and reports `SKUsWithOrder` next to
+`SKUsToOrder`. In the base scenario, TRY 2.7M of the TRY 5.3M is for the 10
+immediate-order SKUs and the rest tops up 31 further SKUs.
+
 Before these calculations, the engine rejects duplicate master-data keys, non-finite or
 negative cost, stock, demand, revenue, and uncertainty values, invalid service levels, and
 non-integer lead-time, MOQ, or case-pack values. This prevents malformed inputs from silently

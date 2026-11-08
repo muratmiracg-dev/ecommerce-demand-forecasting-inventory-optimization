@@ -25,8 +25,8 @@ commercially sensitive data.
 | Forecast horizon | 52 weeks for 2026 |
 | Base forecast | 242,443 units / TRY 397.8M revenue |
 | Average champion WAPE | 15.7% |
-| Base recommended investment | TRY 5.3M |
-| Base immediate-order SKUs | 10 |
+| Base recommended investment | TRY 5.3M across 41 SKUs |
+| Base immediate-order SKUs | 10 (TRY 2.7M of the investment) |
 | Planning scenarios | Lean, Base, Growth, Resilience |
 
 Gradient Boosting was selected for 55 SKUs and Seasonal Naive for 5 SKUs
@@ -87,6 +87,11 @@ be regenerated consistently.
 | Executive report | 10-page vector 16:9 PDF, rendered and checked at 1920×1080 | [HD PDF](Reports/Ecommerce_Demand_Inventory_10_Page_Vector_HD.pdf) |
 | SQL database | Portable SQLite database | [SQLite database](SQL/ecommerce_demand_inventory.db) |
 | Source data | Dimensions, facts, forecasts, and recommendations | [Data folder](Data/) |
+
+The Excel workbook and the two decks are built with a tool outside this repository
+and still label the TRY 5.3M base investment as "10 SKUs to order". The PDF report
+and `Data/scenario_summary.csv` show the split: TRY 2.7M for the 10 immediate-order
+SKUs and TRY 2.7M topping up 31 further SKUs.
 
 ## Dashboard Preview
 

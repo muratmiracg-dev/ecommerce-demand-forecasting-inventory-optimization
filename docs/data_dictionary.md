@@ -136,6 +136,14 @@ Base-scenario SKU recommendations used by the operational reports.
 Scenario-level revenue, order units, investment, weeks of supply, safety stock,
 order count, projected gross margin, and investment-to-revenue ratio.
 
+| Field | Description |
+|---|---|
+| RecommendedInvestmentTRY | Cost of all recommended order quantities |
+| ImmediateOrderInvestmentTRY | Share of the investment for `ORDER NOW` SKUs (at or below reorder point) |
+| TopUpInvestmentTRY | Share for SKUs above their reorder point that are topped up to reorder point plus cycle stock |
+| SKUsToOrder | SKUs classified `ORDER NOW` |
+| SKUsWithOrder | SKUs with a recommended order quantity above zero |
+
 ## Reporting Tables
 
 - `monthly_performance.csv`
