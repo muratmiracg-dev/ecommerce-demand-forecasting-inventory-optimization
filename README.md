@@ -25,8 +25,8 @@ commercially sensitive data.
 | Forecast horizon | 52 weeks for 2026 |
 | Base forecast | 242,443 units / TRY 397.8M revenue |
 | Average champion WAPE | 15.7% |
-| Base recommended investment | TRY 5.3M across 41 SKUs |
-| Base immediate-order SKUs | 10 (TRY 2.7M of the investment) |
+| Base recommended investment | TRY 5.6M across 41 SKUs |
+| Base immediate-order SKUs | 12 (TRY 2.9M of the investment) |
 | Planning scenarios | Lean, Base, Growth, Resilience |
 
 Gradient Boosting was selected for 55 SKUs and Seasonal Naive for 5 SKUs
@@ -89,9 +89,11 @@ be regenerated consistently.
 | Source data | Dimensions, facts, forecasts, and recommendations | [Data folder](Data/) |
 
 The Excel workbook and the two decks are built with a tool outside this repository
-and still label the TRY 5.3M base investment as "10 SKUs to order". The PDF report
-and `Data/scenario_summary.csv` show the split: TRY 2.7M for the 10 immediate-order
-SKUs and TRY 2.7M topping up 31 further SKUs.
+and are a snapshot of an earlier policy: they show a TRY 5.3M base investment
+labelled as "10 SKUs to order", computed with annual-average lead-time demand.
+The PDF report, Power BI model, SQLite database and `Data/` files reflect the
+current engine: TRY 5.6M across 41 SKUs, of which TRY 2.9M is for the 12
+immediate-order SKUs and TRY 2.7M tops up 29 further SKUs.
 
 ## Dashboard Preview
 
@@ -141,7 +143,11 @@ MOQ, and case pack.
 Core calculations:
 
 - `Safety Stock = z × residual standard deviation × √(lead-time weeks)`
-- `Reorder Point = lead-time demand + safety stock`
+- `Reorder Point = lead-time demand + safety stock`, where lead-time demand is the
+  sum of the SKU's weekly forecast over the coming lead time (fractional weeks
+  pro-rated), not the annual weekly average. Seasonal and promotional weeks move
+  individual SKUs' near-term demand 30-45% away from their annual mean.
+- `Cycle stock = max(EOQ / 2, forecast demand for the 4 weeks after the order lands)`
 - `EOQ = √(2 × annual demand × order cost / annual holding cost per unit)`
 - `Inventory Position = on-hand + on-order`
 
@@ -152,10 +158,10 @@ constraints. Four scenarios stress demand, service level, and lead time.
 
 | Scenario | Forecast revenue | Inventory investment | SKUs to order | Decision use |
 |---|---:|---:|---:|---|
-| Lean | TRY 358.0M | TRY 3.8M | 7 | Capital preservation |
-| Base | TRY 397.8M | TRY 5.3M | 10 | Expected operating plan |
-| Growth | TRY 457.5M | TRY 8.2M | 13 | Demand upside |
-| Resilience | TRY 417.7M | TRY 13.5M | 30 | 14-day lead-time shock |
+| Lean | TRY 358.0M | TRY 4.1M | 8 | Capital preservation |
+| Base | TRY 397.8M | TRY 5.6M | 12 | Expected operating plan |
+| Growth | TRY 457.5M | TRY 8.3M | 17 | Demand upside |
+| Resilience | TRY 417.7M | TRY 12.8M | 28 | 14-day lead-time shock |
 
 ## Power BI Report Pages
 

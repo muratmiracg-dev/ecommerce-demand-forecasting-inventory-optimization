@@ -21,6 +21,33 @@ def _round_to_pack(value: float, case_pack: int) -> int:
     return int(math.ceil(value / case_pack) * case_pack)
 
 
+def _horizon_demand(weekly_forecast: np.ndarray, start_week: float, weeks: float) -> float:
+    """Forecast demand from ``start_week`` for ``weeks`` weeks (fractional weeks allowed).
+
+    Reorder points must use the demand expected during the coming lead time, not the
+    annual weekly average: with seasonality and promotions, the next weeks can run
+    30-45% above or below the annual mean for individual SKUs. Weeks beyond the
+    forecast horizon are filled with the horizon's mean weekly demand.
+    """
+
+    if weeks < 0 or start_week < 0:
+        raise ValueError("demand horizon must be non-negative")
+    values = np.asarray(weekly_forecast, dtype=float)
+    if values.size == 0:
+        raise ValueError("weekly forecast must not be empty")
+    filler = float(values.mean())
+    total = 0.0
+    position = start_week
+    end = start_week + weeks
+    while position < end - 1e-12:
+        index = int(math.floor(position))
+        next_boundary = min(end, index + 1.0)
+        value = values[index] if index < values.size else filler
+        total += value * (next_boundary - position)
+        position = next_boundary
+    return total
+
+
 def _validate_inventory_inputs(
     products: pd.DataFrame,
     suppliers: pd.DataFrame,
@@ -151,6 +178,13 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         .merge(champion_metrics, on="SKU", how="left")
     )
 
+    # Weekly forecast per SKU in calendar order, starting with the first forecast week
+    # (the week after the latest inventory snapshot).
+    weekly_forecast = {
+        sku: group.sort_values("WeekStart")["ForecastUnits"].to_numpy(dtype=float)
+        for sku, group in forecast.groupby("SKU")
+    }
+
     scenario_rows = []
     for scenario_name, assumptions in SCENARIOS.items():
         for _, row in base.iterrows():
@@ -173,7 +207,9 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             residual_std = max(1.0, float(row["ResidualStdUnits"]) * demand_multiplier)
             z_score = float(norm.ppf(service_level))
             safety_stock = z_score * residual_std * math.sqrt(lead_time_weeks)
-            reorder_point = avg_weekly * lead_time_weeks + safety_stock
+            sku_forecast = weekly_forecast[row["SKU"]] * demand_multiplier
+            lead_time_demand = _horizon_demand(sku_forecast, 0.0, lead_time_weeks)
+            reorder_point = lead_time_demand + safety_stock
             holding_cost_per_unit = max(float(row["UnitCostTRY"]) * 0.24, 1.0)
             eoq = math.sqrt(
                 2
@@ -182,7 +218,8 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 / holding_cost_per_unit
             )
             inventory_position = float(row["EndingOnHand"]) + float(row["OnOrderUnits"])
-            cycle_stock = max(eoq / 2, avg_weekly * 4)
+            # After the order lands it must cover the next four weeks of demand.
+            cycle_stock = max(eoq / 2, _horizon_demand(sku_forecast, lead_time_weeks, 4.0))
             raw_order = max(0.0, reorder_point + cycle_stock - inventory_position)
             raw_order = max(raw_order, float(row["MOQ"])) if raw_order > 0 else 0
             recommended_qty = _round_to_pack(raw_order, row["CasePack"])
@@ -227,10 +264,13 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                         float(row["ForecastRevenueTRY"]) * demand_multiplier, 2
                     ),
                     "Action": action,
+                    "_ForecastCOGSTRY": annual_demand * float(row["UnitCostTRY"]),
                 }
             )
 
     scenarios = pd.DataFrame(scenario_rows)
+    cogs = scenarios.groupby("Scenario")["_ForecastCOGSTRY"].sum()
+    scenarios = scenarios.drop(columns="_ForecastCOGSTRY")
     recommendations = scenarios[scenarios["Scenario"] == "Base"].copy()
     recommendations = recommendations.sort_values(
         ["Action", "RecommendedInvestmentTRY"], ascending=[True, False]
@@ -267,8 +307,9 @@ def optimize_inventory() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     summaries["TopUpInvestmentTRY"] = (
         summaries["RecommendedInvestmentTRY"] - summaries["ImmediateOrderInvestmentTRY"]
     ).round(2)
+    # Forecast revenue (after expected promotions) minus forecast units at unit cost.
     summaries["ProjectedGrossMarginTRY"] = (
-        summaries["ForecastRevenueTRY"] * 0.58
+        summaries["ForecastRevenueTRY"] - summaries["Scenario"].map(cogs)
     ).round(2)
     summaries["InventoryInvestmentToRevenuePct"] = (
         summaries["RecommendedInvestmentTRY"] / summaries["ForecastRevenueTRY"]

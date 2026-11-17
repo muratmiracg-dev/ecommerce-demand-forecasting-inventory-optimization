@@ -79,11 +79,22 @@ For each SKU and scenario:
 ```text
 Lead-time weeks = lead-time days / 7
 Safety stock = z(service level) × residual std × √(lead-time weeks)
-Reorder point = average weekly demand × lead-time weeks + safety stock
+Lead-time demand = Σ weekly forecast over the next lead-time weeks
+                   (fractional last week pro-rated)
+Reorder point = lead-time demand + safety stock
 Holding cost per unit = unit cost × 24%
 EOQ = √(2 × annual demand × order cost / holding cost per unit)
 Inventory position = ending on-hand + on-order
+Cycle stock = max(EOQ / 2, forecast demand for the 4 weeks after the order lands)
+Projected gross margin = forecast revenue − forecast units × unit cost
 ```
+
+Lead-time demand uses the weekly forecast for the weeks the order is actually
+exposed to, starting with the first forecast week (the week after the latest
+inventory snapshot). An earlier version used the annual weekly average, which
+moved reorder points by −28% to +45% for individual SKUs because the coming weeks
+carry seasonal and promotional peaks or troughs. The projected gross margin was a
+fixed 58% of revenue; it is now computed from each SKU's unit cost.
 
 The recommended order quantity covers the reorder point and cycle stock, then:
 
@@ -98,8 +109,8 @@ above its reorder point (`MONITOR` or `HEALTHY`) can still carry an order. Only
 `ORDER NOW` SKUs are at or below the reorder point. `scenario_summary.csv` therefore
 splits the investment into `ImmediateOrderInvestmentTRY` (`ORDER NOW` SKUs) and
 `TopUpInvestmentTRY` (everything else), and reports `SKUsWithOrder` next to
-`SKUsToOrder`. In the base scenario, TRY 2.7M of the TRY 5.3M is for the 10
-immediate-order SKUs and the rest tops up 31 further SKUs.
+`SKUsToOrder`. In the base scenario, TRY 2.9M of the TRY 5.6M is for the 12
+immediate-order SKUs and the rest tops up 29 further SKUs.
 
 Before these calculations, the engine rejects duplicate master-data keys, non-finite or
 negative cost, stock, demand, revenue, and uncertainty values, invalid service levels, and
