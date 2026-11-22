@@ -138,6 +138,23 @@ def _train_ml(history: pd.DataFrame, test_weeks: int = 13):
     return model
 
 
+def forecast_error_scale(actual: np.ndarray, predicted: np.ndarray) -> float:
+    """Root-mean-square back-test error of the champion, in units per week.
+
+    It sizes the 80% band and, downstream, the safety stock. The standard deviation of the
+    errors would measure spread around their own mean and drop any systematic bias: a SKU
+    whose champion under-forecasts every week needs more protection, not less, because the
+    reorder point is built on the unadjusted forecast. RMSE**2 = bias**2 + error variance.
+    """
+    actual = np.asarray(actual, dtype=float)
+    predicted = np.asarray(predicted, dtype=float)
+    if actual.ndim != 1 or actual.shape != predicted.shape or actual.size == 0:
+        raise ValueError("actual and predicted must be non-empty aligned 1-D arrays")
+    if not (np.isfinite(actual).all() and np.isfinite(predicted).all()):
+        raise ValueError("actual and predicted must be finite")
+    return float(np.sqrt(np.mean((actual - predicted) ** 2)))
+
+
 def run_forecasting() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     sales = pd.read_csv(DATA_DIR / "fact_weekly_sales.csv", parse_dates=["WeekStart"])
     products = pd.read_csv(DATA_DIR / "dim_product.csv", parse_dates=["LaunchDate"])
@@ -198,12 +215,9 @@ def run_forecasting() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         )
         .groupby("SKU")
         .apply(
-            lambda frame: float(
-                np.std(
-                    frame["ActualDemandUnits"].to_numpy()
-                    - frame["PredictedDemandUnits"].to_numpy(),
-                    ddof=1,
-                )
+            lambda frame: forecast_error_scale(
+                frame["ActualDemandUnits"].to_numpy(),
+                frame["PredictedDemandUnits"].to_numpy(),
             ),
             include_groups=False,
         )

@@ -142,7 +142,10 @@ MOQ, and case pack.
 
 Core calculations:
 
-- `Safety Stock = z × residual standard deviation × √(lead-time weeks)`
+- `Safety Stock = z × back-test RMSE × √(lead-time weeks)`. The scale is the champion's
+  root-mean-square error over the 13 back-test weeks, which includes its bias
+  (`RMSE² = bias² + error variance`): a SKU whose model under-forecasts every week needs more
+  protection, not less. The 80% forecast band uses the same scale.
 - `Reorder Point = lead-time demand + safety stock`, where lead-time demand is the
   sum of the SKU's weekly forecast over the coming lead time (fractional weeks
   pro-rated), not the annual weekly average. Seasonal and promotional weeks move
